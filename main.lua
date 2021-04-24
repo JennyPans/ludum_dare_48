@@ -3,7 +3,7 @@
 --- Jenny Pans (Fliflifly)
 --- 2021-04-24
 ----------------------------------------------
-
+io.stdout:setvbuf('no')
 ----------------------------------------------
 --- CONSTANTS
 ----------------------------------------------
@@ -27,7 +27,8 @@ local function newAnimation(image, width, height)
     local animation = {}
     animation.spriteSheet = image;
     animation.quads = {};
-
+    animation.width = width
+    animation.height = height
     for y = 0, image:getHeight() - height, height do
         for x = 0, image:getWidth() - width, width do
             table.insert(animation.quads, love.graphics.newQuad(x, y, width, height, image:getDimensions()))
@@ -49,18 +50,25 @@ end
 local function drawAnimation(sprite)
     local animation = animations[sprite.currentAnimation]
     local spriteNum = math.floor(sprite.currentTimeAnimation / sprite.durationAnimation * #animation.quads) + 1
-    love.graphics.draw(animation.spriteSheet, animation.quads[spriteNum], sprite.x, sprite.y, sprite.r, sprite.sx * SX, sprite.sy * SY)
+    love.graphics.draw(animation.spriteSheet, animation.quads[spriteNum], 
+    sprite.x, sprite.y, sprite.r, sprite.sx * SX, sprite.sy * SY, sprite.ox, sprite.oy)
 end
 ----------------------------------------------
 --- SPRITES
 ----------------------------------------------
-local function changeAnimation(sprite, animation_name)
+local function changeAnimation(sprite, animation_name, isRepeatAnimation)
     sprite.currentTimeAnimation = 0
     if animations[animation_name] then
         sprite.currentAnimation = animation_name
+        sprite.isRepeatAnimation = isRepeatAnimation or true
     else
         sprite.currentAnimation = ""
     end
+end
+
+local function changeState(sprite, state, isRepeatAnimation)
+    sprite.state = state
+    changeAnimation(sprite, state, isRepeatAnimation or true)
 end
 --------- NEW
 ----------------------------------------------
@@ -83,6 +91,7 @@ local function newSprite(screen, x, y)
     sprite.currentAnimation = ""
     sprite.currentTimeAnimation = 0
     sprite.durationAnimation = 1
+    sprite.isRepeatAnimation = false
     table.insert(screen, sprite)
     return sprite
 end
@@ -92,14 +101,16 @@ local function newPlayer(screen, x, y)
     player.ax = 50
     player.ay = 50
     player.type = "player"
+    player.sx = 8
+    player.sy = 8
+    changeState(player, "player_idle")
     return player
 end
 
-local function newPlanet(screen, x, y)
+local function newPlanet(screen, type, x, y)
     local planet = newSprite(screen.sprites, x, y)
     planet.type = "planet"
-    planet.durationAnimation = 1
-    changeAnimation(planet, "earth")
+    changeAnimation(planet, type)
     table.insert(screen.planets, planet)
     return planet
 end
@@ -152,12 +163,18 @@ local function loadMusics()
 end
 
 local function loadGraphics()
-    path = "graphics/"
+    local path = "graphics/"
     graphics["earth"] = love.graphics.newImage(path.."earth.png")
+    graphics["sun"] = love.graphics.newImage(path.."sun.png")
+    graphics["player_idle"] = love.graphics.newImage(path.."player_idle.png")
+    graphics["player_attack"] = love.graphics.newImage(path.."player_attack.png")
 end
 
 local function loadAnimations()
-    animations["earth"] = newAnimation(graphics["earth"], 100, 100, 1)
+    animations["earth"] = newAnimation(graphics["earth"], 100, 100)
+    animations["sun"] = newAnimation(graphics["sun"], 200, 200)
+    animations["player_idle"] = newAnimation(graphics["player_idle"], 24, 37)
+    animations["player_attack"] = newAnimation(graphics["player_attack"], 43, 37)
 end
 
 local function loadScreen()
@@ -166,10 +183,15 @@ local function loadScreen()
 end
 
 local function loadTitleScreen()
+    screen = {}
     screen.current = "title_screen"
     screen.title_screen = loadScreen()
-    newPlanet(screen.title_screen, 0,0)
-    newPlanet(screen.title_screen, 200,0).durationAnimation = 5
+    local planet = newPlanet(screen.title_screen, "earth", love.graphics.getWidth() / 2, love.graphics.getHeight() / 2)
+    planet.sx = 3
+    planet.sy = 3
+    planet.durationAnimation = 8
+    planet.ox = animations[planet.currentAnimation].width / 2
+    planet.oy = animations[planet.currentAnimation].height / 2
     musics["Spacearray"]:setLooping(true)
     musics["Spacearray"]:play()
 end
@@ -201,6 +223,7 @@ local function keypressedGame(key)
     if key == "d" then player.moveRight = true end
     if key == "s" then player.moveDown = true end
     if key == "q" then player.moveLeft = true end
+    if key == "space" then changeState(player, "player_attack") end
 end
 
 function love.keypressed(key, scancode, isrepeat)
@@ -213,12 +236,16 @@ function love.keypressed(key, scancode, isrepeat)
     end
 end
 
+local function keyreleasedGame(key)
+    if key == "z" then player.moveUp = false end
+    if key == "d" then player.moveRight = false end
+    if key == "s" then player.moveDown = false end
+    if key == "q" then player.moveLeft = false end
+end
+
 function love.keyreleased(key, scancode)
     if screen.current == "game" then
-        if key == "z" then player.moveUp = false end
-        if key == "d" then player.moveRight = false end
-        if key == "s" then player.moveDown = false end
-        if key == "q" then player.moveLeft = false end
+        keyreleasedGame(key)
     end
 end
 --------- UPDATE
