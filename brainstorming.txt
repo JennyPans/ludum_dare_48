@@ -17,4 +17,9 @@ Idées :
     - Tomber dans le vide, éviter des obstacles, devenir plus fort
     - Ascendeur qui descends, s'arrête et il y a des combats, il faut aussi collecter des objets -> intéressant
     - Controler la profondeur d'une onde
-    - 
+    - Goute d'eau qui doit rejoindre la nappe fréatique. Est affecté par la température
+    - Vaisseau qui peut aller en profondeur de l'eau, dans l'espace, ...
+
+Vaisseau qui peut aller en profondeur dans l'eau, dans l'espace :
+    - Voyage en vue intérieur du Vaisseau
+    - La vue intérieure du vaisseau est le menu principal (rechargé depuis la dernière partie)
