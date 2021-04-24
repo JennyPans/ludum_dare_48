@@ -88,7 +88,7 @@ local function newSprite(screen, x, y)
 end
 
 local function newPlayer(screen, x, y)
-    player = newSprite(x, y)
+    player = newSprite(screen.sprites, x, y)
     player.ax = 50
     player.ay = 50
     player.type = "player"
@@ -142,30 +142,6 @@ local function drawSprites(sprites)
     end
 end
 ----------------------------------------------
---- KEYS
-----------------------------------------------
-function love.keypressed(key, scancode, isrepeat)
-    if key == "escape" then love.event.quit() end
-    if key == "f3" then DEBUG = not DEBUG end
-    if menu == menu_states[1] then
-        if key == "space" then menu = menu_states[2] end
-    elseif menu == menu_states[2] then
-        if key == "z" then player.moveUp = true end
-        if key == "d" then player.moveRight = true end
-        if key == "s" then player.moveDown = true end
-        if key == "q" then player.moveLeft = true end
-    end
-end
-
-function love.keyreleased(key, scancode)
-    if menu == menu_states[2] then
-        if key == "z" then player.moveUp = false end
-        if key == "d" then player.moveRight = false end
-        if key == "s" then player.moveDown = false end
-        if key == "q" then player.moveLeft = false end
-    end
-end
-----------------------------------------------
 --- GAME LOOP
 ----------------------------------------------
 --------- LOAD
@@ -199,7 +175,9 @@ local function loadTitleScreen()
 end
 
 local function loadGame()
-    newPlayer(0,0)
+    screen.current = "game"
+    screen.game = loadScreen()
+    newPlayer(screen.game, 0, 0)
 end
 
 function love.load()
@@ -209,23 +187,74 @@ function love.load()
     loadAnimations()
     loadTitleScreen()
 end
+--------- KEYS
+----------------------------------------------
+local function keypressedTitleScreen(key)
+    if key == "space" then 
+        loadGame()
+        screen.current = "game"
+    end
+end
+
+local function keypressedGame(key)
+    if key == "z" then player.moveUp = true end
+    if key == "d" then player.moveRight = true end
+    if key == "s" then player.moveDown = true end
+    if key == "q" then player.moveLeft = true end
+end
+
+function love.keypressed(key, scancode, isrepeat)
+    if key == "escape" then love.event.quit() end
+    if key == "f3" then DEBUG = not DEBUG end
+    if screen.current == "title_screen" then
+        keypressedTitleScreen(key)
+    elseif screen.current == "game" then
+        keypressedGame(key)
+    end
+end
+
+function love.keyreleased(key, scancode)
+    if screen.current == "game" then
+        if key == "z" then player.moveUp = false end
+        if key == "d" then player.moveRight = false end
+        if key == "s" then player.moveDown = false end
+        if key == "q" then player.moveLeft = false end
+    end
+end
 --------- UPDATE
 ----------------------------------------------
+local function updateTitleScreen(dt)
+    updateSprites(screen.title_screen.sprites, dt)
+end
+
+local function updateGame(dt)
+    updateSprites(screen.game.sprites, dt)
+end
+
 function love.update(dt)
     if screen.current == "title_screen" then
-        updateSprites(screen.title_screen.sprites, dt)
+        updateTitleScreen(dt)
     elseif screen.current == "game" then
-        updateSprites(screen.game.sprites, dt)
+        updatePlayer(dt)
+        updateGame(dt)
     end
 end
 --------- DRAW
 ----------------------------------------------
+local function drawTitleScreen()
+    drawSprites(screen.title_screen.sprites)
+end
+
+local function drawGame()
+    love.graphics.setBackgroundColor(0.8, 0.5, 0.5, 1)
+    drawSprites(screen.game.sprites)
+end
+
 function love.draw()
     if screen.current == "title_screen" then
-        drawSprites(screen.title_screen.sprites)
+        drawTitleScreen()
     elseif screen.current == "game" then
-        love.graphics.setBackgroundColor(0.8, 0.5, 0.5, 1)
-        drawSprites(screen.game.sprites)
+        drawGame()
     end
 end
 ----------------------------------------------
