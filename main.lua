@@ -23,15 +23,6 @@ local debug = false
 ----------------------------------------------
 --- ANIMATIONS
 ----------------------------------------------
-local function changeAnimation(sprite, animation_name)
-    sprite.currentTimeAnimation = 0
-    if animations[animation_name] then
-        sprite.currentAnimation = animation_name
-    else
-        sprite.currentAnimation = ""
-    end
-end
-
 local function newAnimation(image, width, height)
     local animation = {}
     animation.spriteSheet = image;
@@ -45,8 +36,33 @@ local function newAnimation(image, width, height)
 
     return animation
 end
+
+local function updateAnimation(sprite, dt)
+    if sprite.currentAnimation ~= "" then
+        sprite.currentTimeAnimation = sprite.currentTimeAnimation + dt
+        if sprite.currentTimeAnimation >= sprite.durationAnimation then
+            sprite.currentTimeAnimation = sprite.currentTimeAnimation - sprite.durationAnimation
+        end
+    end
+end
+
+local function drawAnimation(sprite)
+    local animation = animations[sprite.currentAnimation]
+    local spriteNum = math.floor(sprite.currentTimeAnimation / sprite.durationAnimation * #animation.quads) + 1
+    love.graphics.draw(animation.spriteSheet, animation.quads[spriteNum], sprite.x, sprite.y, sprite.r, sprite.sx * SX, sprite.sy * SY)
+end
 ----------------------------------------------
 --- SPRITES
+----------------------------------------------
+local function changeAnimation(sprite, animation_name)
+    sprite.currentTimeAnimation = 0
+    if animations[animation_name] then
+        sprite.currentAnimation = animation_name
+    else
+        sprite.currentAnimation = ""
+    end
+end
+--------- NEW
 ----------------------------------------------
 local function newSprite(x, y)
     local sprite = {}
@@ -85,6 +101,44 @@ local function newPlanet(x, y)
     changeAnimation(planet, "earth")
     table.insert(planets_sprites, planet)
 end
+--------- UPDATE
+----------------------------------------------
+local function updatePlayer(dt)
+    player.vx = 0
+    player.vy = 0
+    if player.moveUp then player.vy = -player.ay * dt end
+    if player.moveRight then player.vx = player.ax * dt end
+    if player.moveDown then player.vy = player.ay * dt end
+    if player.moveLeft then player.vx = -player.ax * dt end
+    player.x = player.x + player.vx
+    player.y = player.y + player.vy
+end
+
+local function updateSprites(sprites, dt)
+    for index, sprite in ipairs(sprites) do
+        updateAnimation(sprite, dt)
+    end
+end
+--------- DRAW
+----------------------------------------------
+local function drawSprite(sprite)
+    love.graphics.setColor(1, 1, 1, 1)
+    if debug then
+        love.graphics.rectangle("fill", sprite.x, sprite.y, sprite.box.w, sprite.box.h)
+    else
+        if sprite.currentAnimation == "" then
+            love.graphics.rectangle("fill", sprite.x, sprite.y, sprite.box.w, sprite.box.h)
+        else
+            drawAnimation(sprite)
+        end
+    end
+end
+
+local function drawSprites(sprites)
+    for index, sprite in ipairs(sprites) do
+        drawSprite(sprite)
+    end
+end
 ----------------------------------------------
 --- KEYS
 ----------------------------------------------
@@ -110,7 +164,9 @@ function love.keyreleased(key, scancode)
     end
 end
 ----------------------------------------------
---- LOAD
+--- GAME LOOP
+----------------------------------------------
+--------- LOAD
 ----------------------------------------------
 local function loadMusics(path)
     musics["Spacearray"] = love.audio.newSource(path.."Spacearray.ogg", "stream")
@@ -135,69 +191,16 @@ function love.load()
     musics["Spacearray"]:setLooping(true)
     musics["Spacearray"]:play()
 end
+--------- UPDATE
 ----------------------------------------------
---- UPDATE
-----------------------------------------------
-local function updateAnimation(sprite, dt)
-    if sprite.currentAnimation ~= "" then
-        sprite.currentTimeAnimation = sprite.currentTimeAnimation + dt
-        if sprite.currentTimeAnimation >= sprite.durationAnimation then
-            sprite.currentTimeAnimation = sprite.currentTimeAnimation - sprite.durationAnimation
-        end
-    end
-end
-
-local function updatePlayer(dt)
-    player.vx = 0
-    player.vy = 0
-    if player.moveUp then player.vy = -player.ay * dt end
-    if player.moveRight then player.vx = player.ax * dt end
-    if player.moveDown then player.vy = player.ay * dt end
-    if player.moveLeft then player.vx = -player.ax * dt end
-    player.x = player.x + player.vx
-    player.y = player.y + player.vy
-end
-
-local function updateSprites(sprites, dt)
-    for index, sprite in ipairs(sprites) do
-        updateAnimation(sprite, dt)
-    end
-end
-
 function love.update(dt)
     updateSprites(sprites, dt)
     if menu == menu_states[2] then
         updatePlayer(dt)
     end
 end
+--------- DRAW
 ----------------------------------------------
---- DRAW
-----------------------------------------------
-local function drawAnimation(sprite)
-    local animation = animations[sprite.currentAnimation]
-    local spriteNum = math.floor(sprite.currentTimeAnimation / sprite.durationAnimation * #animation.quads) + 1
-    love.graphics.draw(animation.spriteSheet, animation.quads[spriteNum], sprite.x, sprite.y, sprite.r, sprite.sx * SX, sprite.sy * SY)
-end
-
-local function drawSprite(sprite)
-    love.graphics.setColor(1, 1, 1, 1)
-    if debug then
-        love.graphics.rectangle("fill", sprite.x, sprite.y, sprite.box.w, sprite.box.h)
-    else
-        if sprite.currentAnimation == "" then
-            love.graphics.rectangle("fill", sprite.x, sprite.y, sprite.box.w, sprite.box.h)
-        else
-            drawAnimation(sprite)
-        end
-    end
-end
-
-local function drawSprites(sprites)
-    for index, sprite in ipairs(sprites) do
-        drawSprite(sprite)
-    end
-end
-
 function love.draw()
     if menu == menu_states[1] then
         drawSprites(planets_sprites)
