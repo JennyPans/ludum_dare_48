@@ -1,0 +1,20 @@
+Thème : De plus en plus profond
+
+ - Vers quoi ?
+ - Objectif ?
+ - Récupérer 48 "étoiles" ?
+
+Idées :
+
+    - Train de la mine
+    - Descente dans une mine (Downwell)
+    - Exploration spatiale
+    - Visite de pyramide
+    - Lancer de boules dans un terrain généré prodéduralement qui va de plus en plus profond
+        - Au passage, prends minerai pour augmenter les capacités de la boule
+    - Visite d'un château pour trouver un ou des artéfacts
+        - Séance de descente avec échelle
+    - Tomber dans le vide, éviter des obstacles, devenir plus fort
+    - Ascendeur qui descends, s'arrête et il y a des combats, il faut aussi collecter des objets -> intéressant
+    - Controler la profondeur d'une onde
+    - 
