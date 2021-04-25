@@ -40,9 +40,15 @@ end
 
 local function updateAnimation(sprite, dt)
     if sprite.currentAnimation ~= "" then
-        sprite.currentTimeAnimation = sprite.currentTimeAnimation + dt
-        if sprite.currentTimeAnimation >= sprite.durationAnimation then
-            sprite.currentTimeAnimation = sprite.currentTimeAnimation - sprite.durationAnimation
+        if not sprite.stoppedAnimation then
+            sprite.currentTimeAnimation = sprite.currentTimeAnimation + dt
+            if sprite.currentTimeAnimation >= sprite.durationAnimation then
+                sprite.currentTimeAnimation = sprite.currentTimeAnimation - sprite.durationAnimation
+                print(tostring(sprite.isRepeatAnimation))
+                if not sprite.isRepeatAnimation then
+                    sprite.stoppedAnimation = true
+                end
+            end
         end
     end
 end
@@ -56,23 +62,27 @@ end
 ----------------------------------------------
 --- SPRITES
 ----------------------------------------------
-local function changeAnimation(sprite, animation_name, isRepeatAnimation)
+local function changeAnimation(sprite, animation_name, duration, isRepeatAnimation)
     sprite.currentTimeAnimation = 0
+    sprite.stoppedAnimation = false
     if animations[animation_name] then
         sprite.currentAnimation = animation_name
-        sprite.isRepeatAnimation = isRepeatAnimation or true
+        sprite.isRepeatAnimation = isRepeatAnimation
+        sprite.durationAnimation = duration
     else
         sprite.currentAnimation = ""
     end
 end
 
-local function changeState(sprite, state, isRepeatAnimation)
+local function changeState(sprite, state, duration, isRepeatAnimation)
     sprite.state = state
-    changeAnimation(sprite, state, isRepeatAnimation or true)
+    print(tostring(sprite.state)..tostring(isRepeatAnimation))
+    if isRepeatAnimation == nil then isRepeatAnimation = true end
+    changeAnimation(sprite, state, duration or 1, isRepeatAnimation)
 end
 --------- NEW
 ----------------------------------------------
-local function newSprite(screen, x, y)
+local function newSprite(screen, type, x, y)
     local sprite = {}
     sprite.x = x
     sprite.y = y
@@ -92,15 +102,16 @@ local function newSprite(screen, x, y)
     sprite.currentTimeAnimation = 0
     sprite.durationAnimation = 1
     sprite.isRepeatAnimation = false
+    sprite.stoppedAnimation = false
+    sprite.type = type
     table.insert(screen, sprite)
     return sprite
 end
 
 local function newPlayer(screen, x, y)
-    player = newSprite(screen.sprites, x, y)
+    player = newSprite(screen.sprites, "player", x, y)
     player.ax = 50
     player.ay = 50
-    player.type = "player"
     player.sx = 8
     player.sy = 8
     changeState(player, "player_idle")
@@ -108,15 +119,23 @@ local function newPlayer(screen, x, y)
 end
 
 local function newPlanet(screen, type, x, y)
-    local planet = newSprite(screen.sprites, x, y)
+    local planet = newSprite(screen.sprites, "planet", x, y)
     planet.type = "planet"
-    changeAnimation(planet, type)
+    changeState(planet, type, 8)
     table.insert(screen.planets, planet)
     return planet
 end
 --------- UPDATE
 ----------------------------------------------
-local function updatePlayer(dt)
+local function updateSprites(sprites, dt)
+    for index, sprite in ipairs(sprites) do
+        sprite.vx = 0
+        sprite.vy = 0
+        updateAnimation(sprite, dt)
+    end
+end
+
+local function updatePlayerIdle(dt)
     player.vx = 0
     player.vy = 0
     if player.moveUp then player.vy = -player.ay * dt end
@@ -127,9 +146,17 @@ local function updatePlayer(dt)
     player.y = player.y + player.vy
 end
 
-local function updateSprites(sprites, dt)
-    for index, sprite in ipairs(sprites) do
-        updateAnimation(sprite, dt)
+local function updatePlayerAttack(dt)
+    if player.stoppedAnimation then
+        changeState(player, "player_idle")
+    end
+end
+
+local function updatePlayer(dt)
+    if player.state == "player_idle" then
+        updatePlayerIdle(dt)
+    elseif player.state == "player_attack" then
+        updatePlayerAttack(dt)
     end
 end
 --------- DRAW
@@ -189,7 +216,6 @@ local function loadTitleScreen()
     local planet = newPlanet(screen.title_screen, "earth", love.graphics.getWidth() / 2, love.graphics.getHeight() / 2)
     planet.sx = 3
     planet.sy = 3
-    planet.durationAnimation = 8
     planet.ox = animations[planet.currentAnimation].width / 2
     planet.oy = animations[planet.currentAnimation].height / 2
     musics["Spacearray"]:setLooping(true)
@@ -223,7 +249,7 @@ local function keypressedGame(key)
     if key == "d" then player.moveRight = true end
     if key == "s" then player.moveDown = true end
     if key == "q" then player.moveLeft = true end
-    if key == "space" then changeState(player, "player_attack") end
+    if key == "space" then changeState(player, "player_attack", 1, false) end
 end
 
 function love.keypressed(key, scancode, isrepeat)
