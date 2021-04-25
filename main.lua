@@ -13,6 +13,7 @@ DEBUG = false
 ----------------------------------------------
 --- VARIABLES
 ----------------------------------------------
+local sounds = {}
 local musics = {}
 local graphics = {}
 local player = {}
@@ -75,10 +76,11 @@ local function changeAnimation(sprite, animation_name, duration, isRepeatAnimati
 end
 
 local function changeState(sprite, state, duration, isRepeatAnimation)
-    sprite.state = state
-    print(tostring(sprite.state)..tostring(isRepeatAnimation))
-    if isRepeatAnimation == nil then isRepeatAnimation = true end
-    changeAnimation(sprite, state, duration or 1, isRepeatAnimation)
+    if sprite.state ~= state then
+        sprite.state = state
+        if isRepeatAnimation == nil then isRepeatAnimation = true end
+        changeAnimation(sprite, state, duration or 1, isRepeatAnimation)
+    end
 end
 --------- NEW
 ----------------------------------------------
@@ -110,10 +112,10 @@ end
 
 local function newPlayer(screen, x, y)
     player = newSprite(screen.sprites, "player", x, y)
-    player.ax = 50
-    player.ay = 50
-    player.sx = 8
-    player.sy = 8
+    player.ax = 100
+    player.ay = 100
+    player.sx = 4
+    player.sy = 4
     changeState(player, "player_idle")
     return player
 end
@@ -136,18 +138,22 @@ local function updateSprites(sprites, dt)
 end
 
 local function updatePlayerIdle(dt)
-    player.vx = 0
-    player.vy = 0
+end
+
+local function updatePlayerAttack(dt)
+    if player.stoppedAnimation then
+        changeState(player, "player_idle")
+    end
+end
+
+local function updatePlayerWalk(dt)
     if player.moveUp then player.vy = -player.ay * dt end
     if player.moveRight then player.vx = player.ax * dt end
     if player.moveDown then player.vy = player.ay * dt end
     if player.moveLeft then player.vx = -player.ax * dt end
     player.x = player.x + player.vx
     player.y = player.y + player.vy
-end
-
-local function updatePlayerAttack(dt)
-    if player.stoppedAnimation then
+    if player.vx == 0 and player.vy == 0 then
         changeState(player, "player_idle")
     end
 end
@@ -157,6 +163,8 @@ local function updatePlayer(dt)
         updatePlayerIdle(dt)
     elseif player.state == "player_attack" then
         updatePlayerAttack(dt)
+    elseif player.state == "player_walk" then
+        updatePlayerWalk(dt)
     end
 end
 --------- DRAW
@@ -184,8 +192,13 @@ end
 ----------------------------------------------
 --------- LOAD
 ----------------------------------------------
+local function loadSounds()
+    local path = "sounds/"
+    sounds["synthetic_explosion_1"] = love.audio.newSource(path.."synthetic_explosion_1.mp3", "static")
+end
+
 local function loadMusics()
-    path = "musics/"
+    local path = "musics/"
     musics["Spacearray"] = love.audio.newSource(path.."Spacearray.ogg", "stream")
 end
 
@@ -195,6 +208,7 @@ local function loadGraphics()
     graphics["sun"] = love.graphics.newImage(path.."sun.png")
     graphics["player_idle"] = love.graphics.newImage(path.."player_idle.png")
     graphics["player_attack"] = love.graphics.newImage(path.."player_attack.png")
+    graphics["player_walk"] = love.graphics.newImage(path.."player_walk.png")
 end
 
 local function loadAnimations()
@@ -202,6 +216,7 @@ local function loadAnimations()
     animations["sun"] = newAnimation(graphics["sun"], 200, 200)
     animations["player_idle"] = newAnimation(graphics["player_idle"], 24, 37)
     animations["player_attack"] = newAnimation(graphics["player_attack"], 43, 37)
+    animations["player_walk"] = newAnimation(graphics["player_walk"], 22, 33)
 end
 
 local function loadScreen()
@@ -230,6 +245,7 @@ end
 
 function love.load()
     love.graphics.setDefaultFilter("nearest", "nearest")
+    loadSounds()
     loadMusics()
     loadGraphics()
     loadAnimations()
@@ -244,13 +260,62 @@ local function keypressedTitleScreen(key)
     end
 end
 
-local function keypressedGame(key)
-    if key == "z" then player.moveUp = true end
-    if key == "d" then player.moveRight = true end
-    if key == "s" then player.moveDown = true end
-    if key == "q" then player.moveLeft = true end
-    if key == "space" then changeState(player, "player_attack", 1, false) end
+local function playSound(sound)
+    if sounds[sound] then
+        sounds[sound]:stop()
+        sounds[sound]:play()
+    end
 end
+
+local function handleInputs()
+    if player.state == "player_idle" or player.state == "player_walk" then
+        if love.keyboard.isDown("z") then
+            player.moveUp = true
+            changeState(player, "player_walk", 0.4)
+        end
+        if love.keyboard.isDown("d") then
+            player.moveRight = true
+            changeState(player, "player_walk", 0.4)
+        end
+        if love.keyboard.isDown("s") then
+            player.moveDown = true
+            changeState(player, "player_walk", 0.4)
+        end
+        if love.keyboard.isDown("q") then
+            player.moveLeft = true
+            changeState(player, "player_walk", 0.4)
+        end
+        if love.keyboard.isDown("space") then
+            playSound("synthetic_explosion_1")
+            changeState(player, "player_attack", 0.4, false)
+        end
+    end
+end
+
+--[[local function keypressedGame(key)
+    if player.state == "player_idle" or player.state == "player_walk" then
+        if key == "z" then
+            player.moveUp = true
+            changeState(player, "player_walk", 0.4)
+        end
+        if key == "d" then
+            player.moveRight = true
+            changeState(player, "player_walk", 0.4)
+        end
+        if key == "s" then
+            player.moveDown = true
+            changeState(player, "player_walk", 0.4)
+        end
+        if key == "q" then
+            player.moveLeft = true
+            changeState(player, "player_walk", 0.4)
+        end
+        if key == "space" then
+            playSound("synthetic_explosion_1")
+            changeState(player, "player_attack", 0.4, false)
+        end
+    end
+end]]--
 
 function love.keypressed(key, scancode, isrepeat)
     if key == "escape" then love.event.quit() end
@@ -258,15 +323,23 @@ function love.keypressed(key, scancode, isrepeat)
     if screen.current == "title_screen" then
         keypressedTitleScreen(key)
     elseif screen.current == "game" then
-        keypressedGame(key)
+        --keypressedGame(key)
     end
 end
 
 local function keyreleasedGame(key)
-    if key == "z" then player.moveUp = false end
-    if key == "d" then player.moveRight = false end
-    if key == "s" then player.moveDown = false end
-    if key == "q" then player.moveLeft = false end
+    if key == "z" then 
+        player.moveUp = false
+    end
+    if key == "d" then 
+        player.moveRight = false
+    end
+    if key == "s" then 
+        player.moveDown = false
+    end
+    if key == "q" then 
+        player.moveLeft = false
+    end
 end
 
 function love.keyreleased(key, scancode)
@@ -288,6 +361,7 @@ function love.update(dt)
     if screen.current == "title_screen" then
         updateTitleScreen(dt)
     elseif screen.current == "game" then
+        handleInputs()
         updatePlayer(dt)
         updateGame(dt)
     end
